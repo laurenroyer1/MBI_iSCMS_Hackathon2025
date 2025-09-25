@@ -61,7 +61,7 @@ SigNoiseAdd = pd.Series(SigNoise_pred, name='predicted_signal')
 bigvaldf = pd.concat([validationdf, SigNoiseAdd], axis=1, join='outer')
 # print(bigvaldf)
 
-###treating spectra numbrt and m/z like coodinates
+###treating spectra number and m/z like coodinates
 def find_closest_neighbor(df, lat_col, lon_col, metric='euclidean'): 
     """
     Finds the closest neighboring point for each point in a DataFrame.
@@ -100,7 +100,7 @@ def find_closest_neighbor(df, lat_col, lon_col, metric='euclidean'):
     return df
 
 bigvaldf2= find_closest_neighbor(bigvaldf, 'mz', 'spec_no', metric='euclidean')
-print(bigvaldf2)
+bigvaldf2.to_csv('validation_predictionadded_neighboradded.csv')
 
 # ### visualize prediction across parameters to determine areas to target for weighting
 # colors = ['green' if p == v else 'red' for p, v in zip(bigvaldf2['signal'], bigvaldf2['predicted_signal'])]#zip(SigNoise_pred, ValidationSigNoise)]
