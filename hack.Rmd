@@ -1,0 +1,60 @@
+---
+title: "hack"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(reader)
+library(ggplot2)
+library(reshape2)
+
+train = read.csv("train.csv") %>%
+  mutate(logint = log10(intensity))
+sig = train$signal
+sig = str_replace(sig, "0", "noise")
+sig = str_replace(sig, "1", "signal")
+train$signal = sig
+
+train4 = train %>% filter(spec_no == 4)
+
+ggplot(train4, aes(x = mz, y = logint, color = signal)) +
+  geom_point()
+
+train_noise = train %>% filter(signal == "noise")
+train_noise_1e5 = train_noise %>% filter(intensity < 100000)
+
+train_signal = train %>% filter(signal == "signal")
+train_signal_1e5 = train_signal %>% filter(intensity < 100000)
+
+train_noise = train %>% filter(signal == "noise")
+train_noise_5e5 = train_noise %>% filter(intensity < 500000)
+
+train_signal = train %>% filter(signal == "signal")
+train_signal_5e5 = train_signal %>% filter(intensity < 500000)
+
+train_summary = train %>% 
+  group_by(spec_no, signal) %>%
+  summarise(n()) 
+
+train_summary_wide = dcast(train_summary, spec_no ~ signal) %>%
+  mutate(SN_peak_ratio = signal/noise)
+
+train_summary_wide_peak1 = train_summary_wide %>% filter(SN_peak_ratio < 20) %>%
+  mutate(Total_peaks = signal + noise)
+train_summary_wide_peak2 = train_summary_wide %>% filter(SN_peak_ratio > 50) %>%
+  mutate(Total_peaks = signal + noise)
+
+test = inner_join(train, train_summary_wide_peak2, by = "spec_no")
+```
+
+```{r}
+data = read.csv("validation_predictionadded_neighboradded.csv")
+
+data_correct = data %>% filter(signal == predicted_signal)
+data_incorrect = data %>% filter(signal != predicted_signal)
+
+data_signal = data %>% filter(signal == 1)
+data_noise = data %>% filter(signal == 0)
+
+```

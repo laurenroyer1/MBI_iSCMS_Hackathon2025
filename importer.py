@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 #### import train/test
 traindf = pd.read_csv('train.csv')
 validationdf = pd.read_csv('validation.csv')
+finaldf = pd.read_csv('test.csv')
 ####define target params here once we want to start weighting
 
 # Features and target
@@ -38,6 +39,13 @@ print(classification_report(ValidationSigNoise, SigNoise_pred))
 # If you want probabilities instead of labels:
 y_proba = model.predict_proba(ValidationFeatures)[:, 1]
 
+finalsn = model.predict(finaldf)
+finalresult = pd.Series(finalsn, name='signal')
+finalresultint = finalresult.fillna(0)
+submitdf = pd.merge(finaldf, finalresultint, left_index=True, right_index=True)
+submitdfna = submitdf.fillna(0)
+print(submitdfna)
+submitdfna.to_csv('MBI_Uribre_Royer_final.csv')
 ###basic performance checks
 # RocCurveDisplay.from_estimator(model, ValidationFeatures, ValidationSigNoise)
 # plt.title("ROC Curve")
@@ -56,51 +64,53 @@ y_proba = model.predict_proba(ValidationFeatures)[:, 1]
 # plt.legend()
 # plt.show()
 
-#### turn results into validation df to start testing metrics
-SigNoiseAdd = pd.Series(SigNoise_pred, name='predicted_signal')
-bigvaldf = pd.concat([validationdf, SigNoiseAdd], axis=1, join='outer')
-# print(bigvaldf)
+# #### turn results into validation df to start testing metrics
+# SigNoiseAdd = pd.Series(SigNoise_pred, name='predicted_signal')
+# bigvaldf = pd.concat([validationdf, SigNoiseAdd], axis=1, join='outer')
+# # print(bigvaldf)
 
-###treating spectra number and m/z like coodinates
-def find_closest_neighbor(df, lat_col, lon_col, metric='euclidean'): 
-    """
-    Finds the closest neighboring point for each point in a DataFrame.
+# ###treating spectra number and m/z like coodinates
+# def find_closest_neighbor(df, lat_col, lon_col, metric='euclidean'): 
+#     """
+#     Finds the closest neighboring point for each point in a DataFrame.
 
-    Args:
-        df (pd.DataFrame): The input DataFrame containing point coordinates.
-        lat_col (str): The name of the column containing latitude values.
-        lon_col (str): The name of the column containing longitude values.
-        metric (str, optional): The distance metric to use from sklearn.
-                                'euclidean' for Cartesian coordinates.
+#     Args:
+#         df (pd.DataFrame): The input DataFrame containing point coordinates.
+#         lat_col (str): The name of the column containing latitude values.
+#         lon_col (str): The name of the column containing longitude values.
+#         metric (str, optional): The distance metric to use from sklearn.
+#                                 'euclidean' for Cartesian coordinates.
 
-    Returns:
-        pd.DataFrame: The original DataFrame with two new columns:
-                      'closest_neighbor_index' (index of the closest neighbor)
-                      and 'closest_neighbor_distance' (distance to the closest neighbor).
-    """
+#     Returns:
+#         pd.DataFrame: The original DataFrame with two new columns:
+#                       'closest_neighbor_index' (index of the closest neighbor)
+#                       and 'closest_neighbor_distance' (distance to the closest neighbor).
+#     """
 
-    if metric == 'haversine':
-        # Convert degrees to radians for haversine metric
-        data = deg2rad(df[[lat_col, lon_col]])
-    else:
-        data = df[[lat_col, lon_col]]
+#     if metric == 'haversine':
+#         # Convert degrees to radians for haversine metric
+#         data = deg2rad(df[[lat_col, lon_col]])
+#     else:
+#         data = df[[lat_col, lon_col]]
 
-    # Initialize NearestNeighbors with n_neighbors=2 to get self and closest neighbor
-    neigh = NearestNeighbors(n_neighbors=2, metric=metric)
-    neigh.fit(data)
+#     # Initialize NearestNeighbors with n_neighbors=2 to get self and closest neighbor
+#     neigh = NearestNeighbors(n_neighbors=2, metric=metric)
+#     neigh.fit(data)
 
-    # Find the k-neighbors and their distances
-    distances, indices = neigh.kneighbors(data, n_neighbors=2, return_distance=True)
-    # The first neighbor is always the point itself (distance 0), so we take the second one
-    # The index of the closest neighbor is at indices[:, 1]
-    # The distance to the closest neighbor is at distances[:, 1]
-    df['closest_neighbor_index'] = indices[:, 1]
-    df['closest_neighbor_distance'] = distances[:, 1]
+#     # Find the k-neighbors and their distances
+#     distances, indices = neigh.kneighbors(data, n_neighbors=2, return_distance=True)
+#     # The first neighbor is always the point itself (distance 0), so we take the second one
+#     # The index of the closest neighbor is at indices[:, 1]
+#     # The distance to the closest neighbor is at distances[:, 1]
+#     df['closest_neighbor_index'] = indices[:, 1]
+#     df['closest_neighbor_distance'] = distances[:, 1]
 
-    return df
+#     return df
 
-bigvaldf2= find_closest_neighbor(bigvaldf, 'mz', 'spec_no', metric='euclidean')
-bigvaldf2.to_csv('validation_predictionadded_neighboradded.csv')
+# bigvaldf2= find_closest_neighbor(bigvaldf, 'mz', 'spec_no', metric='euclidean')
+
+# # bigvaldf2['neighborindexdistance'] = abs(bigvaldf2[]-bigvaldf2['']) ###working to add
+# # bigvaldf2.to_csv('validation_predictionadded_neighboradded.csv')
 
 # ### visualize prediction across parameters to determine areas to target for weighting
 # colors = ['green' if p == v else 'red' for p, v in zip(bigvaldf2['signal'], bigvaldf2['predicted_signal'])]#zip(SigNoise_pred, ValidationSigNoise)]
@@ -125,17 +135,17 @@ bigvaldf2.to_csv('validation_predictionadded_neighboradded.csv')
 # # plt.xlabel('spec_no')
 # # plt.ylabel('Intensity')
 
-# # #### euclidean SpecNo+mz vs intensity
-# # plt.scatter(bigvaldf2['closest_neighbor_distance'], bigvaldf2['intensity'], c=colors, s=100, alpha=0.7, edgecolors='black')
-# # plt.title('Validation Accuracy for Closest Spec+MZ Neighbor vs Intensity')
-# # plt.xlabel('euclidean SpecNo+mz')
-# # plt.ylabel('Intensity')
-
-# #### euclidean SpecNo+mz vs mz
-# plt.scatter(bigvaldf2['closest_neighbor_distance'], bigvaldf2['mz'], c=colors, s=100, alpha=0.7, edgecolors='black')
-# plt.title('Validation Accuracy for Closest Spec+MZ Neighbor vs mz')
+# #### euclidean SpecNo+mz vs intensity
+# plt.scatter(bigvaldf2['closest_neighbor_distance'], bigvaldf2['intensity'], c=colors, s=100, alpha=0.7, edgecolors='black')
+# plt.title('Validation Accuracy for Closest Spec+MZ Neighbor vs Intensity')
 # plt.xlabel('euclidean SpecNo+mz')
-# plt.ylabel('mz')
+# plt.ylabel('Intensity')
+
+# # #### euclidean SpecNo+mz vs mz
+# # plt.scatter(bigvaldf2['closest_neighbor_distance'], bigvaldf2['mz'], c=colors, s=100, alpha=0.7, edgecolors='black')
+# # plt.title('Validation Accuracy for Closest Spec+MZ Neighbor vs mz')
+# # plt.xlabel('euclidean SpecNo+mz')
+# # plt.ylabel('mz')
 
 
 # plt.grid(True)

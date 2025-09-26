@@ -25,7 +25,7 @@ ValidationFeatures = validationdf[["spec_no", "mz", "intensity", "closest_neighb
 ValidationSigNoise = validationdf["signal"]  # 0 or 1
 
 # adding weights from R scripts on S/N evaluation and poor neighbor influence
-orderedweights = np.array()
+# orderedweights = np.array()
 
 # Build logistic regression model
 model = LogisticRegression(max_iter=1000)
